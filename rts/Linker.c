@@ -1711,6 +1711,28 @@ internal_dlsym(void *hdl, const char *symbol) {
     RELEASE_LOCK(&dl_mutex);
     return v;
 }
+
+static void
+internal_dlclose_for_sym(const char *symbol) {
+    OpenedSO** po_so;
+    OpenedSO* o_so;
+
+    // We acquire dl_mutex as concurrent dl* calls may alter dlerror
+    ACQUIRE_LOCK(&dl_mutex);
+    dlerror();
+    for (po_so = &openedSOs, o_so = openedSOs; o_so != NULL; po_so = &o_so->next, o_so = o_so->next) {
+        dlsym(o_so->handle, symbol);
+        if (dlerror() == NULL) {
+            // best-effort closing
+            if (!dlclose(o_so->handle))
+            {
+                *po_so = o_so->next;
+            }
+            break;
+        }
+    }
+    RELEASE_LOCK(&dl_mutex);
+}
 #  endif
 
 const char *
