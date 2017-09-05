@@ -48,6 +48,9 @@ data Format
         | FF80
         deriving (Show, Eq)
 
+-- IDEA (GGR):
+-- data Format = IntFormat Width | FloatFormat Width
+-- pattern II8 = IntFormat W8
 
 -- | Get the integer format of this width.
 intFormat :: Width -> Format
