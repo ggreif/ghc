@@ -37,12 +37,13 @@ import Outputable
 
 data Format = IntFormat Width | FloatFormat Width deriving Eq
 
-pattern II8, II16 :: Format
+pattern II8, II16, II32, II64 :: Format
 pattern II8 = IntFormat W8
 pattern II16 = IntFormat W16
 pattern II32 = IntFormat W32
 pattern II64 = IntFormat W64
 
+pattern FF32, FF64, FF80 :: Format
 pattern FF32 = FloatFormat W32
 pattern FF64 = FloatFormat W64
 pattern FF80 = FloatFormat W80
