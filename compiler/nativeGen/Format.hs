@@ -3,8 +3,6 @@
 -- | Formats on this architecture
 --      A Format is a combination of width and class
 --
---      TODO:   Signed vs unsigned?
---
 --      TODO:   This module is currenly shared by all architectures because
 --              NCGMonad need to know about it to make a VReg. It would be better
 --              to have architecture specific formats, and do the overloading
@@ -35,26 +33,11 @@ import Outputable
 --      MOV II32 a b
 -- where the Format field encodes the ".l" part.
 
--- ToDo: it's not clear to me that we need separate signed-vs-unsigned formats
---        here.  I've removed them from the x86 version, we'll see what happens --SDM
-
 -- ToDo: quite a few occurrences of Format could usefully be replaced by Width
 
-{-
-data Format
-        = II8
-        | II16
-        | II32
-        | II64
-        | FF32
-        | FF64
-        | FF80
-        deriving (Show, Eq)
--}
-
--- IDEA (GGR):
 data Format = IntFormat Width | FloatFormat Width deriving Eq
 
+pattern II8, II16 :: Format
 pattern II8 = IntFormat W8
 pattern II16 = IntFormat W16
 pattern II32 = IntFormat W32
@@ -93,12 +76,8 @@ floatFormat width
 
 -- | Check if a format represents a floating point value.
 isFloatFormat :: Format -> Bool
-isFloatFormat format
- = case format of
-        FF32    -> True
-        FF64    -> True
-        FF80    -> True
-        _       -> False
+isFloatFormat (FloatFormat _) = True
+isFloatFormat _ = False
 
 
 -- | Convert a Cmm type to a Format.
@@ -110,15 +89,8 @@ cmmTypeFormat ty
 
 -- | Get the Width of a Format.
 formatToWidth :: Format -> Width
-formatToWidth format
- = case format of
-        II8             -> W8
-        II16            -> W16
-        II32            -> W32
-        II64            -> W64
-        FF32            -> W32
-        FF64            -> W64
-        FF80            -> W80
+formatToWidth (FloatFormat w) = w
+formatToWidth (IntFormat w) = w
 
 formatInBytes :: Format -> Int
 formatInBytes = widthInBytes . formatToWidth
