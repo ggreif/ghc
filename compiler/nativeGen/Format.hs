@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 -- | Formats on this architecture
 --      A Format is a combination of width and class
 --
@@ -9,7 +11,7 @@
 --              properly. eg SPARC doesn't care about FF80.
 --
 module Format (
-    Format(..),
+    Format(II8, II16, II32, II64, FF32, FF64, FF80),
     intFormat,
     floatFormat,
     isFloatFormat,
@@ -38,6 +40,7 @@ import Outputable
 
 -- ToDo: quite a few occurrences of Format could usefully be replaced by Width
 
+{-
 data Format
         = II8
         | II16
@@ -47,10 +50,23 @@ data Format
         | FF64
         | FF80
         deriving (Show, Eq)
+-}
 
 -- IDEA (GGR):
--- data Format = IntFormat Width | FloatFormat Width
--- pattern II8 = IntFormat W8
+data Format = IntFormat Width | FloatFormat Width deriving Eq
+
+pattern II8 = IntFormat W8
+pattern II16 = IntFormat W16
+pattern II32 = IntFormat W32
+pattern II64 = IntFormat W64
+
+pattern FF32 = FloatFormat W32
+pattern FF64 = FloatFormat W64
+pattern FF80 = FloatFormat W80
+
+instance Show Format where
+  show (IntFormat w) = "II" ++ tail (show w)
+  show (FloatFormat w) = "FF" ++ tail (show w)
 
 -- | Get the integer format of this width.
 intFormat :: Width -> Format
