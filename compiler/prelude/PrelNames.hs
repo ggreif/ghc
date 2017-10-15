@@ -24,7 +24,7 @@ Nota Bene: all Names defined in here should come from the base package
    One of these Names contains
         (a) the module and occurrence name of the thing
         (b) its Unique
-   The may way the compiler "knows about" one of these things is
+   The way the compiler "knows about" one of these things is
    where the type checker or desugarer needs to look it up. For
    example, when desugaring list comprehensions the desugarer
    needs to conjure up 'foldr'.  It does this by looking up
@@ -719,7 +719,7 @@ not_RDR, getTag_RDR, succ_RDR, pred_RDR, minBound_RDR, maxBound_RDR,
     unsafeIndex_RDR, unsafeRangeSize_RDR :: RdrName
 and_RDR                 = varQual_RDR gHC_CLASSES (fsLit "&&")
 not_RDR                 = varQual_RDR gHC_CLASSES (fsLit "not")
-getTag_RDR              = varQual_RDR gHC_BASE (fsLit "getTag")
+getTag_RDR              = varQual_RDR gHC_CLASSES (fsLit "getTag")
 succ_RDR                = varQual_RDR gHC_ENUM (fsLit "succ")
 pred_RDR                = varQual_RDR gHC_ENUM (fsLit "pred")
 minBound_RDR            = varQual_RDR gHC_ENUM (fsLit "minBound")

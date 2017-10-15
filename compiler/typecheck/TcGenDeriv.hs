@@ -126,7 +126,7 @@ possibly zero of them).  Here's an example, with both \tr{N}ullary and
        case (a1 `eqFloat#` a2) of r -> r
   for that particular test.
 
-* If there are a lot of (more than en) nullary constructors, we emit a
+* If there are a lot of (more than ten) nullary constructors, we emit a
   catch-all clause of the form:
 
       (==) a b  = case (con2tag_Foo a) of { a# ->
@@ -175,7 +175,7 @@ gen_Eq_binds loc tycon = do
 
     no_tag_match_cons = null tag_match_cons
 
-    fall_through_eqn dflags
+    fall_through_eqn _dflags
       | no_tag_match_cons   -- All constructors have arguments
       = case pat_match_cons of
           []  -> []   -- No constructors; no fall-though case
@@ -187,8 +187,11 @@ gen_Eq_binds loc tycon = do
       | otherwise -- One or more tag_match cons; add fall-through of
                   -- extract tags compare for equality
       = [([a_Pat, b_Pat],
-         untag_Expr dflags tycon [(a_RDR,ah_RDR), (b_RDR,bh_RDR)]
-                    (genPrimOpApp (nlHsVar ah_RDR) eqInt_RDR (nlHsVar bh_RDR)))]
+          genPrimOpApp (nlHsApp (nlHsVar getTag_RDR) a_Expr)
+                       eqInt_RDR
+                       (nlHsApp (nlHsVar getTag_RDR) b_Expr))]
+--         untag_Expr dflags tycon [(a_RDR,ah_RDR), (b_RDR,bh_RDR)]
+--                    (genPrimOpApp (nlHsVar ah_RDR) eqInt_RDR (nlHsVar bh_RDR)))]
 
     aux_binds | no_tag_match_cons = emptyBag
               | otherwise         = unitBag $ DerivAuxBind $ DerivCon2Tag tycon
