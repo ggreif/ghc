@@ -37,6 +37,7 @@ import Cmm
 import CmmInfo
 import CoreSyn
 import DataCon
+import DynFlags         ( mAX_PTR_TAG )
 import ForeignCall
 import Id
 import PrimOp
@@ -616,12 +617,13 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                    branches' = [(tag+1,branch) | (tag,branch) <- branches]
                 emitSwitch tag_expr branches' mb_deflt 1 fam_sz
 
-           else -- No, get tag from info table
-                let -- Note that ptr _always_ has tag 1
-                    -- when the family size is big enough
-                    untagged_ptr = cmmRegOffB bndr_reg (-1)
-                    tag_expr = getConstrTag dflags (untagged_ptr)
-                in emitSwitch tag_expr branches mb_deflt 0 (fam_sz - 1)
+           else -- No, get exact tag from info table when mAX_PTR_TAG
+                let --untagged_ptr = cmmRegOffB bndr_reg (-1)
+                    --tag_expr = getConstrTag dflags (untagged_ptr)
+                    tag_expr = cmmConstrTag1 dflags (CmmReg bndr_reg)
+                    branches' = [(tag+1,branch) | (tag,branch) <- branches, tag < mAX_PTR_TAG dflags]
+                in emitSwitch tag_expr branches' mb_deflt 1 fam_sz
+-- emitSwitch tag_expr branches mb_deflt 0 (fam_sz - 1)
 
         ; return AssignedDirectly }
 
