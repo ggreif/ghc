@@ -612,10 +612,9 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
 
                     -- Is the constructor tag in the node reg?
         ; if isSmallFamily dflags fam_sz
-          then do
-                let   -- Yes, bndr_reg has constr. tag in ls bits
+          then let   -- Yes, bndr_reg has constr. tag in ls bits
                    branches' = [(tag+1,branch) | (tag,branch) <- branches]
-                emitSwitch tag_expr branches' mb_deflt 1 fam_sz
+               in emitSwitch tag_expr branches' mb_deflt 1 fam_sz
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
                 let 
