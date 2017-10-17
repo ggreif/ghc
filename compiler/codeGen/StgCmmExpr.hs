@@ -608,18 +608,17 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
 
         ; let fam_sz   = tyConFamilySize tycon
               bndr_reg = CmmLocal (idToReg dflags bndr)
+              tag_expr = cmmConstrTag1 dflags (CmmReg bndr_reg)
 
                     -- Is the constructor tag in the node reg?
         ; if isSmallFamily dflags fam_sz
           then do
                 let   -- Yes, bndr_reg has constr. tag in ls bits
-                   tag_expr = cmmConstrTag1 dflags (CmmReg bndr_reg)
                    branches' = [(tag+1,branch) | (tag,branch) <- branches]
                 emitSwitch tag_expr branches' mb_deflt 1 fam_sz
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
                 let 
-                    tag_expr = cmmConstrTag1 dflags (CmmReg bndr_reg)
                     branches' = catchall : [(tag',branch) | (tag,branch) <- branches, let tag' = tag+1, tag' < mAX_PTR_TAG dflags]
                     catchall = let untagged_ptr = cmmRegOffB bndr_reg (-1)
                                    tag_expr = getConstrTag dflags untagged_ptr
