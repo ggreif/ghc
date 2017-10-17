@@ -617,13 +617,16 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                in emitSwitch tag_expr branches' mb_deflt 1 fam_sz
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
-              --do 
+              do
+                others_lbl <- newBlockId
+                let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
+                    tag_expr = getConstrTag dflags untagged_ptr
+                emitLabel others_lbl
+                emitSwitch tag_expr branches Nothing (mAX_PTR_TAG dflags) (fam_sz - 1)
                 let 
                     branches' = catchall : [(tag',branch) | (tag,branch) <- branches, let tag' = tag+1, tag' < mAX_PTR_TAG dflags]
-                    catchall = let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
-                                   tag_expr = getConstrTag dflags untagged_ptr
-                               in (mAX_PTR_TAG dflags, _ (emitSwitch tag_expr branches Nothing (mAX_PTR_TAG dflags) (fam_sz - 1)))
-                in emitSwitch tag_expr branches' mb_deflt 1 (mAX_PTR_TAG dflags)
+                    catchall = (mAX_PTR_TAG dflags, (mkBranch others_lbl, undefined))
+                emitSwitch tag_expr branches' mb_deflt 1 (mAX_PTR_TAG dflags)
 
         ; return AssignedDirectly }
 
