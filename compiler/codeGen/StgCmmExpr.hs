@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, PatternSynonyms, ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 -----------------------------------------------------------------------------
@@ -50,9 +50,11 @@ import Util
 import FastString
 import Outputable
 
-import Control.Monad (unless,void)
+import Control.Monad (unless,void,when)
 import Control.Arrow (first)
 import Data.Function ( on )
+import Data.List ( partition )
+import Debug.Trace ( traceShow )
 
 ------------------------------------------------------------------------
 --              cgExpr: the main function
@@ -609,24 +611,27 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
         ; let fam_sz   = tyConFamilySize tycon
               bndr_reg = CmmLocal (idToReg dflags bndr)
               tag_expr = cmmConstrTag1 dflags (CmmReg bndr_reg)
+              branches' = [(tag+1,branch) | (tag,branch) <- branches]
 
                     -- Is the constructor tag in the node reg?
         ; if isSmallFamily dflags fam_sz
-          then let   -- Yes, bndr_reg has constr. tag in ls bits
-                   branches' = [(tag+1,branch) | (tag,branch) <- branches]
-               in emitSwitch tag_expr branches' mb_deflt 1 fam_sz
+           then -- Yes, bndr_reg has constr. tag in ls bits
+               emitSwitch tag_expr branches' mb_deflt 1 fam_sz
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
               do
                 others_lbl <- newBlockId
-                let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
+                let (ptr, con) = partition ((< mAX_PTR_TAG dflags) . fst) branches'
+                    cons = not $ null con
+                    untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
                     tag_expr = getConstrTag dflags untagged_ptr
-                emitLabel others_lbl
-                emitSwitch tag_expr branches Nothing (mAX_PTR_TAG dflags) (fam_sz - 1)
-                let 
-                    branches' = catchall : [(tag',branch) | (tag,branch) <- branches, let tag' = tag+1, tag' < mAX_PTR_TAG dflags]
-                    catchall = (mAX_PTR_TAG dflags, (mkBranch others_lbl, undefined))
-                emitSwitch tag_expr branches' mb_deflt 1 (mAX_PTR_TAG dflags)
+                TRACE <- pure (length ptr, length con)
+
+                when cons $ do emitLabel others_lbl
+                               emitSwitch tag_expr con Nothing (mAX_PTR_TAG dflags) (fam_sz - 1)
+                let branches'' = if null con then ptr else catchall : ptr 
+                    catchall = (mAX_PTR_TAG dflags, (mkBranch others_lbl, undefined{-FIXME-}))
+                emitSwitch tag_expr branches'' mb_deflt 1 (mAX_PTR_TAG dflags)
 
         ; return AssignedDirectly }
 
@@ -653,6 +658,7 @@ cgAlts _ _ _ _ = panic "cgAlts"
 -- L5:
 --   x = R1
 --   goto L1
+pattern TRACE <- ((`traceShow` ()) -> ())
 
 -------------------
 cgAlgAltRhss :: (GcPlan,ReturnKind) -> NonVoid Id -> [StgAlt]
