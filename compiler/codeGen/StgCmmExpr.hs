@@ -620,18 +620,20 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
               do
-                others_lbl <- newBlockId
                 let (ptr, con) = partition ((< mAX_PTR_TAG dflags) . fst) branches'
                     cons = not $ null con
+                    con0 = (\(t,o)->(t-1,o)) <$> con
                     untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
                     tag_expr' = getConstrTag dflags untagged_ptr
                 --TRACE <- pure (length ptr, length con)
+                others_lbl <- newBlockId
+                scp <- getTickScope
 
-                when cons $ do emitLabel others_lbl
-                               emitSwitch tag_expr' con Nothing (mAX_PTR_TAG dflags) (fam_sz - 1)
                 let branches'' = if null con then ptr else ptr ++ [catchall]
-                    catchall = (mAX_PTR_TAG dflags, (mkBranch others_lbl, undefined{-FIXME-}))
+                    catchall = (mAX_PTR_TAG dflags, (mkBranch others_lbl, scp))
                 emitSwitch tag_expr branches'' mb_deflt 1 (mAX_PTR_TAG dflags)
+                when cons $ do emitLabel others_lbl
+                               emitSwitch tag_expr' con0 Nothing (mAX_PTR_TAG dflags) (fam_sz - 1)
 
         ; return AssignedDirectly }
 
