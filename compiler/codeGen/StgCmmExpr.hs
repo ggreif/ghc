@@ -624,12 +624,12 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                 let (ptr, con) = partition ((< mAX_PTR_TAG dflags) . fst) branches'
                     cons = not $ null con
                     untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
-                    tag_expr = getConstrTag dflags untagged_ptr
-                TRACE <- pure (length ptr, length con)
+                    tag_expr' = getConstrTag dflags untagged_ptr
+                --TRACE <- pure (length ptr, length con)
 
                 when cons $ do emitLabel others_lbl
-                               emitSwitch tag_expr con Nothing (mAX_PTR_TAG dflags) (fam_sz - 1)
-                let branches'' = if null con then ptr else catchall : ptr 
+                               emitSwitch tag_expr' con Nothing (mAX_PTR_TAG dflags) (fam_sz - 1)
+                let branches'' = if null con then ptr else ptr ++ [catchall]
                     catchall = (mAX_PTR_TAG dflags, (mkBranch others_lbl, undefined{-FIXME-}))
                 emitSwitch tag_expr branches'' mb_deflt 1 (mAX_PTR_TAG dflags)
 
