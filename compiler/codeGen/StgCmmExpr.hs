@@ -621,7 +621,7 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                 let --untagged_ptr = cmmRegOffB bndr_reg (-1)
                     --tag_expr = getConstrTag dflags (untagged_ptr)
                     tag_expr = cmmConstrTag1 dflags (CmmReg bndr_reg)
-                    branches' = [(tag+1,branch) | (tag,branch) <- branches, tag < mAX_PTR_TAG dflags]
+                    branches' = [(tag',branch) | (tag,branch) <- branches, let tag' = tag+1, tag' < mAX_PTR_TAG dflags]
                 in emitSwitch tag_expr branches' mb_deflt 1 fam_sz
 -- emitSwitch tag_expr branches mb_deflt 0 (fam_sz - 1)
 
