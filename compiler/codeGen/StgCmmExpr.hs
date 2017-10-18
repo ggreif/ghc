@@ -628,7 +628,6 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                     con0 = (\(t,o)->(t-1,o)) <$> con
                     untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
                     tag_expr' = getConstrTag dflags untagged_ptr
-                --TRACE <- pure (fst <$> ptr, fst <$> con0)
                 others_lbl <- newBlockId
                 scp <- getTickScope
 
@@ -638,7 +637,6 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                 when cons $ do emitLabel others_lbl
                                scp2 <- getTickScope
                                let redirect (_, scp) = (mkBranch default_lbl, scp)
-                               --TRACE <- pure $ snd <$> mb_deflt
                                emitSwitch tag_expr' con0 (redirect <$> mb_deflt) (mAX_PTR_TAG dflags - 1) (fam_sz - 1)
 
         ; return AssignedDirectly }
