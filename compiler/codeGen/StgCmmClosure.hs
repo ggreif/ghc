@@ -370,11 +370,10 @@ isSmallFamilyTyCon dflags tycon =
 tagForCon :: DynFlags -> DataCon -> DynTag
 tagForCon dflags con
   | isSmallFamilyTyCon dflags tycon = con_tag
-  | con_tag < max_tag               = con_tag
+  | con_tag <= max_tag              = con_tag
   | otherwise                       = max_tag
   where
-    con_tag  = dataConTag con -- NB: 1-indexed
-    fam_size = tyConFamilySize (dataConTyCon con)
+    con_tag = dataConTag con -- NB: 1-indexed
     max_tag = mAX_PTR_TAG dflags
     tycon = dataConTyCon con
 
