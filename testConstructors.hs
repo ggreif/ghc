@@ -22,6 +22,13 @@ foo F2 = E2
 foo F3 = E3
 foo F4 = E4
 
+{-# NOINLINE baz #-}
+baz F1 = E1
+baz F2 = E2
+baz F3 = E3
+baz F4 = E4
+baz F7 = E4
+
 main = do print $ foo <$> [F1 .. F4]
           print $ quux <$> [F1 .. F10]
-          print $ foo F10
+          print $ baz F10
