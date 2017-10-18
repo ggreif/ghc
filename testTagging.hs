@@ -29,6 +29,6 @@ bar S3 = B3
 bar S4 = B4
 
 
-main = do print $ foo <$> [B1 .. B4]
-          print $ bar <$> [S1 .. S4]
-          print $ quux <$> [B1 .. B10]
+main = do print $ take 100000 (repeat (foo <$> [B1 .. B4]))
+          print $ take 100000 (repeat (bar <$> [S1 .. S4]))
+          print $ take 100000 (repeat (quux <$> [B1 .. B10]))
