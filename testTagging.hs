@@ -1,6 +1,6 @@
-data Small = S1 | S2 | S3 | S4 deriving Show
+data Small = S1 | S2 | S3 | S4 deriving (Show, Enum)
 
-data Big = B1 | B2 | B3 | B4 | B5 | B6 | B7 | B8 | B9 | B10 deriving Show
+data Big = B1 | B2 | B3 | B4 | B5 | B6 | B7 | B8 | B9 | B10 deriving (Show, Enum)
 
 {-# NOINLINE quux #-}
 quux B1 = 'a'
@@ -29,6 +29,6 @@ bar S3 = B3
 bar S4 = B4
 
 
-main = do print $ foo B3
-          print $ bar S3
-          print $ quux B9
+main = do print $ foo <$> [B1 .. B4]
+          print $ bar <$> [S1 .. S4]
+          print $ quux <$> [B1 .. B10]
