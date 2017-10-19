@@ -631,8 +631,8 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                          return (Just (mkLabel lbl scp <*> stmts, scp), Just (mkBranch lbl, scp))
                     prelabel _ = return (Nothing, Nothing)
 
-                (mb_deflt', mb_branch) <- prelabel mb_deflt
-                emitSwitch tag_expr (catchall : ptr) mb_deflt' 1 maxtag
+                (mb_deflt, mb_branch) <- prelabel mb_deflt
+                emitSwitch tag_expr (catchall : ptr) mb_deflt 1 maxtag
                 emitLabel infos_lbl
                 let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
                     tag_expr = getConstrTag dflags untagged_ptr
