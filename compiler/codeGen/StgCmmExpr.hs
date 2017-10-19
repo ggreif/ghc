@@ -50,7 +50,7 @@ import Util
 import FastString
 import Outputable
 
-import Control.Monad ( unless, void, when )
+import Control.Monad ( unless, void )
 import Control.Arrow ( first )
 import Data.Function ( on )
 import Data.List     ( partition )
@@ -611,35 +611,32 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
               bndr_reg = CmmLocal (idToReg dflags bndr)
               tag_expr = cmmConstrTag1 dflags (CmmReg bndr_reg)
               branches' = [(tag+1,branch) | (tag,branch) <- branches]
+              maxtag = mAX_PTR_TAG dflags
+              (ptr, info) = partition ((< maxtag) . fst) branches'
+              small = isSmallFamily dflags fam_sz
 
                     -- Is the constructor tag in the node reg?
-        ; if isSmallFamily dflags fam_sz
+        ; if small || null info
            then -- Yes, bndr_reg has constr. tag in ls bits
-               emitSwitch tag_expr branches' mb_deflt 1 fam_sz
+               emitSwitch tag_expr branches' mb_deflt 1 (if small then fam_sz else maxtag - 1)
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
               do
-                let maxtag = mAX_PTR_TAG dflags
-                    (ptr, info) = partition ((< maxtag) . fst) branches'
-
                 infos_lbl <- newBlockId -- branch destination for info pointer lookup
                 infos_scp <- getTickScope
                 default_lbl <- newBlockId
 
-                let branches'' = if null info then ptr else catchall : ptr
-                    catchall = (maxtag, (mkBranch infos_lbl, infos_scp))
-                    infos = not $ null info
+                let catchall = (maxtag, (mkBranch infos_lbl, infos_scp))
                     prelabel (stmts, scp) = (mkLabel default_lbl scp <*> stmts, scp)
-                    mb_deflt' = if infos then prelabel <$> mb_deflt else mb_deflt
 
-                emitSwitch tag_expr branches'' mb_deflt' 1 maxtag
-                when infos $ do emitLabel infos_lbl
-                                let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
-                                    tag_expr' = getConstrTag dflags untagged_ptr
-                                    redirect (_, scp) = (mkBranch default_lbl, scp)
-                                    redirection = redirect <$> mb_deflt
-                                    info0 = (\(t,o)->(t-1,o)) <$> info
-                                emitSwitch tag_expr' info0 redirection (maxtag - 1) (fam_sz - 1)
+                emitSwitch tag_expr (catchall : ptr) (prelabel <$> mb_deflt) 1 maxtag
+                emitLabel infos_lbl
+                let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
+                    tag_expr' = getConstrTag dflags untagged_ptr
+                    redirect (_, scp) = (mkBranch default_lbl, scp)
+                    redirection = redirect <$> mb_deflt
+                    info0 = (\(t,o)->(t-1,o)) <$> info
+                emitSwitch tag_expr' info0 redirection (maxtag - 1) (fam_sz - 1)
 
         ; return AssignedDirectly }
 
