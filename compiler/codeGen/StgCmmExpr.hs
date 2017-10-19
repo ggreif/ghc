@@ -611,33 +611,33 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
               bndr_reg = CmmLocal (idToReg dflags bndr)
               tag_expr = cmmConstrTag1 dflags (CmmReg bndr_reg)
               branches' = [(tag+1,branch) | (tag,branch) <- branches]
-              maxtag = mAX_PTR_TAG dflags
-              (ptr, info) = partition ((< maxtag) . fst) branches'
+              maxpt = mAX_PTR_TAG dflags
+              (ptr, info) = partition ((< maxpt) . fst) branches'
               small = isSmallFamily dflags fam_sz
 
                     -- Is the constructor tag in the node reg?
         ; if small || null info
            then -- Yes, bndr_reg has constr. tag in ls bits
-               emitSwitch tag_expr branches' mb_deflt 1 (if small then fam_sz else maxtag - 1)
+               emitSwitch tag_expr branches' mb_deflt 1 (if small then fam_sz else maxpt - 1)
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
               do
                 infos_lbl <- newBlockId -- branch destination for info pointer lookup
                 infos_scp <- getTickScope
 
-                let catchall = (maxtag, (mkBranch infos_lbl, infos_scp))
+                let catchall = (maxpt, (mkBranch infos_lbl, infos_scp))
                     prelabel (Just (stmts, scp)) =
                       do lbl <- newBlockId
                          return (Just (mkLabel lbl scp <*> stmts, scp), Just (mkBranch lbl, scp))
                     prelabel _ = return (Nothing, Nothing)
 
                 (mb_deflt, mb_branch) <- prelabel mb_deflt
-                emitSwitch tag_expr (catchall : ptr) mb_deflt 1 maxtag
+                emitSwitch tag_expr (catchall : ptr) mb_deflt 1 maxpt
                 emitLabel infos_lbl
                 let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
                     tag_expr = getConstrTag dflags untagged_ptr
                     info0 = (\(t,o)->(t-1,o)) <$> info
-                emitSwitch tag_expr info0 mb_branch (maxtag - 1) (fam_sz - 1)
+                emitSwitch tag_expr info0 mb_branch (maxpt - 1) (fam_sz - 1)
 
         ; return AssignedDirectly }
 
