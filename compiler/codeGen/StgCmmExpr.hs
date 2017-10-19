@@ -624,19 +624,20 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
               do
                 infos_lbl <- newBlockId -- branch destination for info pointer lookup
                 infos_scp <- getTickScope
-                default_lbl <- newBlockId
 
                 let catchall = (maxtag, (mkBranch infos_lbl, infos_scp))
-                    prelabel (stmts, scp) = (mkLabel default_lbl scp <*> stmts, scp)
+                    prelabel (Just (stmts, scp)) =
+                      do lbl <- newBlockId
+                         return (Just (mkLabel lbl scp <*> stmts, scp), Just (mkBranch lbl, scp))
+                    prelabel _ = return (Nothing, Nothing)
 
-                emitSwitch tag_expr (catchall : ptr) (prelabel <$> mb_deflt) 1 maxtag
+                (mb_deflt', mb_branch) <- prelabel mb_deflt
+                emitSwitch tag_expr (catchall : ptr) mb_deflt' 1 maxtag
                 emitLabel infos_lbl
                 let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
-                    tag_expr' = getConstrTag dflags untagged_ptr
-                    redirect (_, scp) = (mkBranch default_lbl, scp)
-                    redirection = redirect <$> mb_deflt
+                    tag_expr = getConstrTag dflags untagged_ptr
                     info0 = (\(t,o)->(t-1,o)) <$> info
-                emitSwitch tag_expr' info0 redirection (maxtag - 1) (fam_sz - 1)
+                emitSwitch tag_expr info0 mb_branch (maxtag - 1) (fam_sz - 1)
 
         ; return AssignedDirectly }
 
