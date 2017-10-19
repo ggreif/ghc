@@ -616,6 +616,7 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
               small = isSmallFamily dflags fam_sz
 
                     -- Is the constructor tag in the node reg?
+                    -- See Note [tagging big families]
         ; if small || null info
            then -- Yes, bndr_reg has constr. tag in ls bits
                emitSwitch tag_expr branches' mb_deflt 1 (if small then fam_sz else maxpt - 1)
@@ -664,6 +665,20 @@ cgAlts _ _ _ _ = panic "cgAlts"
 -- L5:
 --   x = R1
 --   goto L1
+
+
+-- Note [tagging big families]
+--
+-- Previousy, only the small constructor families were tagged.
+-- This penalized greater union which overflow the tag space
+-- of TAG_BITS (i.e. 3 on 32 resp. 7 constructors on 64 bit).
+-- But there is a clever way of combining pointer and info-table
+-- tagging. We now use 1..{2,6} as pointer-resident tags while
+-- {3,7} signifies we have to fall back and get the tag from the
+-- info-table.
+--
+-- Also see Note [Data constructor dynamic tags]
+
 
 -------------------
 cgAlgAltRhss :: (GcPlan,ReturnKind) -> NonVoid Id -> [StgAlt]

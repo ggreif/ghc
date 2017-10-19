@@ -358,6 +358,8 @@ type DynTag = Int       -- The tag on a *pointer*
 -- evaluatedness, the last one lumping together all overflowing ones.
 -- We don't have very many tag bits: for example, we have 2 bits on
 -- x86-32 and 3 bits on x86-64.
+--
+-- Also see Note [tagging big families]
 
 isSmallFamily :: DynFlags -> Int -> Bool
 isSmallFamily dflags fam_size = fam_size <= mAX_PTR_TAG dflags
