@@ -14,6 +14,17 @@ quux B8 = 'h'
 quux B9 = 'i'
 quux B10 = 'j'
 
+{-# NOINLINE qaax #-}
+qaax B1 = 'a'
+qaax B2 = 'b'
+qaax B3 = 'c'
+qaax B4 = 'd'
+
+qaax B7 = 'g'
+qaax B8 = 'h'
+qaax B9 = 'i'
+qaax B10 = 'j'
+
 
 {-# NOINLINE foo #-}
 foo B1 = S1
@@ -32,3 +43,4 @@ bar S4 = B4
 main = do print $ take 100000 (repeat (foo <$> [B1 .. B4]))
           print $ take 100000 (repeat (bar <$> [S1 .. S4]))
           print $ take 100000 (repeat (quux <$> [B1 .. B10]))
+          print $ qaax B1
