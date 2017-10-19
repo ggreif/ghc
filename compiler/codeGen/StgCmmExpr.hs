@@ -619,20 +619,21 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
               do
-                default_lbl <- newBlockId
-                let prelabel (stmts, scp) = (mkLabel default_lbl scp <*> stmts, scp)
-                    mb_deflt' = prelabel <$> mb_deflt
-                    maxtag = mAX_PTR_TAG dflags
-                    (ptr, info) = partition ((<maxtag) . fst) branches'
+                let maxtag = mAX_PTR_TAG dflags
+                    (ptr, info) = partition ((< maxtag) . fst) branches'
 
-                others_lbl <- newBlockId
-                scp <- getTickScope
+                infos_lbl <- newBlockId -- branch destination for info pointer lookup
+                infos_scp <- getTickScope
+                default_lbl <- newBlockId
 
                 let branches'' = if null info then ptr else catchall : ptr
-                    catchall = (maxtag, (mkBranch others_lbl, scp))
+                    catchall = (maxtag, (mkBranch infos_lbl, infos_scp))
                     infos = not $ null info
-                emitSwitch tag_expr branches'' mb_deflt' 1 (maxtag)
-                when infos $ do emitLabel others_lbl
+                    prelabel (stmts, scp) = (mkLabel default_lbl scp <*> stmts, scp)
+                    mb_deflt' = if infos then prelabel <$> mb_deflt else mb_deflt
+
+                emitSwitch tag_expr branches'' mb_deflt' 1 maxtag
+                when infos $ do emitLabel infos_lbl
                                 let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
                                     tag_expr' = getConstrTag dflags untagged_ptr
                                     redirect (_, scp) = (mkBranch default_lbl, scp)
