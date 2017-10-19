@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, PatternSynonyms, ViewPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 -----------------------------------------------------------------------------
@@ -50,11 +50,10 @@ import Util
 import FastString
 import Outputable
 
-import Control.Monad (unless,void,when)
-import Control.Arrow (first)
+import Control.Monad ( unless, void, when )
+import Control.Arrow ( first )
 import Data.Function ( on )
-import Data.List ( partition )
-import Debug.Trace ( traceShow )
+import Data.List     ( partition )
 
 ------------------------------------------------------------------------
 --              cgExpr: the main function
@@ -623,21 +622,23 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                 default_lbl <- newBlockId
                 let prelabel (stmts, scp) = (mkLabel default_lbl scp <*> stmts, scp)
                     mb_deflt' = prelabel <$> mb_deflt
-                let (ptr, con) = partition ((< mAX_PTR_TAG dflags) . fst) branches'
-                    cons = not $ null con
-                    con0 = (\(t,o)->(t-1,o)) <$> con
-                    untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
-                    tag_expr' = getConstrTag dflags untagged_ptr
+                    maxtag = mAX_PTR_TAG dflags
+                    (ptr, info) = partition ((<maxtag) . fst) branches'
+
                 others_lbl <- newBlockId
                 scp <- getTickScope
 
-                let branches'' = if null con then ptr else ptr ++ [catchall]
-                    catchall = (mAX_PTR_TAG dflags, (mkBranch others_lbl, scp))
-                emitSwitch tag_expr branches'' mb_deflt' 1 (mAX_PTR_TAG dflags)
-                when cons $ do emitLabel others_lbl
-                               scp2 <- getTickScope
-                               let redirect (_, scp) = (mkBranch default_lbl, scp)
-                               emitSwitch tag_expr' con0 (redirect <$> mb_deflt) (mAX_PTR_TAG dflags - 1) (fam_sz - 1)
+                let branches'' = if null info then ptr else catchall : ptr
+                    catchall = (maxtag, (mkBranch others_lbl, scp))
+                    infos = not $ null info
+                emitSwitch tag_expr branches'' mb_deflt' 1 (maxtag)
+                when infos $ do emitLabel others_lbl
+                                let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
+                                    tag_expr' = getConstrTag dflags untagged_ptr
+                                    redirect (_, scp) = (mkBranch default_lbl, scp)
+                                    redirection = redirect <$> mb_deflt
+                                    info0 = (\(t,o)->(t-1,o)) <$> info
+                                emitSwitch tag_expr' info0 redirection (maxtag - 1) (fam_sz - 1)
 
         ; return AssignedDirectly }
 
@@ -664,7 +665,6 @@ cgAlts _ _ _ _ = panic "cgAlts"
 -- L5:
 --   x = R1
 --   goto L1
-pattern TRACE <- ((`traceShow` ()) -> ())
 
 -------------------
 cgAlgAltRhss :: (GcPlan,ReturnKind) -> NonVoid Id -> [StgAlt]
