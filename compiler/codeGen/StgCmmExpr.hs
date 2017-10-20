@@ -637,7 +637,7 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                 emitLabel infos_lbl
                 let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
                     tag_expr = getConstrTag dflags untagged_ptr
-                    info0 = (\(t,o)->(t-1,o)) <$> info
+                    info0 = (\(tag,branch)->(tag-1,branch)) <$> info
                 emitSwitch tag_expr info0 mb_branch (maxpt - 1) (fam_sz - 1)
 
         ; return AssignedDirectly }
