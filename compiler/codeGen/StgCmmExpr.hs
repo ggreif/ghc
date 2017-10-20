@@ -619,7 +619,7 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                     -- See Note [tagging big families]
         ; if small || null info
            then -- Yes, bndr_reg has constr. tag in ls bits
-               emitSwitch tag_expr branches' mb_deflt 1 (if small then fam_sz else maxpt - 1)
+               emitSwitch tag_expr branches' mb_deflt 1 (if small then fam_sz else maxpt)
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
               do
