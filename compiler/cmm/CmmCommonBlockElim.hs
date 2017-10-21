@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, BangPatterns #-}
 module CmmCommonBlockElim
-  ( elimCommonBlocks
+  ( elimCommonBlocks, globalEnv
   )
 where
 
@@ -12,7 +12,7 @@ import Cmm
 import CmmUtils
 import CmmSwitch (eqSwitchTargetWith)
 import CmmContFlowOpt
--- import PprCmm ()
+import PprCmm () -- GGR
 
 import Hoopl.Block
 import Hoopl.Graph
@@ -30,6 +30,13 @@ import UniqDFM
 import qualified TrieMap as TM
 import Unique
 import Control.Arrow (first, second)
+import Data.IORef
+import System.IO.Unsafe (unsafePerformIO)
+--import Data.Map.Lazy as Map
+
+globalEnv :: IORef (Subst, HashedKeyedDistinctBlocks)
+(globalEnv, ()) = unsafePerformIO $ do ref <- newIORef (mapEmpty, [])
+                                       return (ref, ())
 
 -- -----------------------------------------------------------------------------
 -- Eliminate common blocks
@@ -60,38 +67,41 @@ import Control.Arrow (first, second)
 -- rightfully complained: #10397
 
 -- TODO: Use optimization fuel
-elimCommonBlocks :: DynFlags -> CmmGraph -> CmmGraph
-elimCommonBlocks dflags g = replaceLabels env $ copyTicks env g
+elimCommonBlocks :: DynFlags -> (CmmGraph, (Subst, HashedKeyedDistinctBlocks)) -> (CmmGraph, (Subst, HashedKeyedDistinctBlocks))
+elimCommonBlocks dflags (g, (env0, blcks)) = (replaceLabels env $ copyTicks env g, (env, blcks'))
   where
-     env = iterate dflags mapEmpty blocks_with_key
+     (env, blcks') = iterate dflags env0 acc_bwk -- blocks_with_key
      groups = groupByInt (hash_block dflags) (postorderDfs g)
-     blocks_with_key = [ [ (successors b, [b]) | b <- bs] | bs <- groups]
+     blocks_with_key = [ (h, [ (successors b, [b]) | b <- bs]) | (h, bs) <- groups]
+     acc_bwk = M.toList $ M.unionWith (++) (M.fromList blcks) (M.fromList blocks_with_key)
 
 -- Invariant: The blocks in the list are pairwise distinct
 -- (so avoid comparing them again)
 type DistinctBlocks = [CmmBlock]
 type Key = [Label]
 type Subst = LabelMap BlockId
+type HashedKeyedDistinctBlocks = [(Int, [(Key, DistinctBlocks)])]
 
 -- The outer list groups by hash. We retain this grouping throughout.
-iterate :: DynFlags -> Subst -> [[(Key, DistinctBlocks)]] -> Subst
+iterate :: DynFlags -> Subst -> HashedKeyedDistinctBlocks -> (Subst, HashedKeyedDistinctBlocks)
 iterate dflags subst blocks
-    | mapNull new_substs = subst
+    | mapNull new_substs = (subst, updated_blocks)
     | otherwise = iterate dflags subst' updated_blocks
   where
-    grouped_blocks :: [[(Key, [DistinctBlocks])]]
-    grouped_blocks = map groupByLabel blocks
+    grouped_blocks :: [(Int, [(Key, [DistinctBlocks])])]
+    grouped_blocks = map (second groupByLabel) blocks
 
-    merged_blocks :: [[(Key, DistinctBlocks)]]
+    merged_blocks :: HashedKeyedDistinctBlocks
     (new_substs, merged_blocks) =
-        List.mapAccumL (List.mapAccumL go) mapEmpty grouped_blocks
+        List.mapAccumL (\lmb (h,bs) -> let (lmb', bs') = List.mapAccumL go lmb bs in (lmb', (h,bs'))) mapEmpty grouped_blocks
+        --List.mapAccumL (\(h,bs)->(h,List.mapAccumL go bs)) mapEmpty grouped_blocks
       where
         go !new_subst1 (k,dbs) = (new_subst1 `mapUnion` new_subst2, (k,db))
           where
             (new_subst2, db) = mergeBlockList dflags subst dbs
 
     subst' = subst `mapUnion` new_substs
-    updated_blocks = map (map (first (map (lookupBid subst')))) merged_blocks
+    updated_blocks = map (second (map (first (map (lookupBid subst'))))) merged_blocks
 
 mergeBlocks :: DynFlags -> Subst
             -> DistinctBlocks -> DistinctBlocks
@@ -102,9 +112,9 @@ mergeBlocks dflags subst existing new = go new
     go (b:bs) =
         case List.find (eqBlockBodyWith dflags (eqBid subst) b) existing of
           -- This block is a duplicate. Drop it, and add it to the substitution
-          Just b' -> first (mapInsert (entryLabel b) (entryLabel b')) $ go bs
+          Just b' -> first (mapInsert (entryLabel b) (entryLabel b')) $ pprTrace "DID MERGE" (ppr (entryLabel b) $$ ppr (entryLabel b')) (go bs)
           -- This block is not a duplicate, keep it.
-          Nothing -> second (b:) $ go bs
+          Nothing -> second (b:) $ pprTrace "DID NOT MERGE" (ppr (entryLabel b)) (go bs)
 
 mergeBlockList :: DynFlags -> Subst -> [DistinctBlocks]
                -> (Subst, DistinctBlocks)
@@ -183,7 +193,7 @@ data HashEnv = HashEnv { localRegHashEnv :: !(LocalRegEnv DeBruijn)
 
 hash_block :: DynFlags -> CmmBlock -> HashCode
 hash_block dflags block =
-  --pprTrace "hash_block" (ppr (entryLabel block) $$ ppr hash)
+  pprTrace "hash_block" (ppr (entryLabel block) $$ ppr hash) -- GGR
   hash
   where hash_fst _ (env, h) = (env, h)
         hash_mid m (env, h) = let (env', h') = hash_node env m
@@ -298,12 +308,13 @@ eqMiddleWith :: DynFlags
              -> (LocalRegMapping, Bool)
 eqMiddleWith dflags eqBid env a b =
   case (a, b) of
+    (l,  r) | pprTrace "eqMiddleWith " (vcat [ppr l, ppr r]) False -> undefined
      -- registers aren't compared since they are binding occurrences
     (CmmAssign (CmmLocal _) e1,  CmmAssign (CmmLocal _) e2) ->
         let eq = eqExprWith eqBid env e1 e2
         in (env', eq)
 
-    (CmmAssign r1 e1,  CmmAssign r2 e2) ->
+    (l@(CmmAssign r1 e1),  r@(CmmAssign r2 e2)) | pprTrace "ASSIGN " (vcat [ppr l, ppr r]) True ->
         let eq = r1 == r2
               && eqExprWith eqBid env e1 e2
         in (env', eq)
@@ -361,11 +372,11 @@ eqBlockBodyWith :: DynFlags
                 -> (BlockId -> BlockId -> Bool)
                 -> CmmBlock -> CmmBlock -> Bool
 eqBlockBodyWith dflags eqBid block block'
-  {-
+
   | equal     = pprTrace "equal" (vcat [ppr block, ppr block']) True
   | otherwise = pprTrace "not equal" (vcat [ppr block, ppr block']) False
-  -}
-  = equal
+
+ -- = equal
   where (_,m,l)   = blockSplit block
         nodes     = filter (not . dont_care) (blockToList m)
         (_,m',l') = blockSplit block'
@@ -382,6 +393,7 @@ eqLastWith :: (BlockId -> BlockId -> Bool) -> LocalRegMapping
            -> CmmNode O C -> CmmNode O C -> Bool
 eqLastWith eqBid env a b =
     case (a, b) of
+      -- (l,  r) | pprTrace "eqLastWith " (vcat [ppr l, ppr r]) False -> undefined
       (CmmBranch bid1, CmmBranch bid2) -> eqBid bid1 bid2
       (CmmCondBranch c1 t1 f1 l1, CmmCondBranch c2 t2 f2 l2) ->
           eqExprWith eqBid env c1 c2 && l1 == l2 && eqBid t1 t2 && eqBid f1 f2
@@ -441,7 +453,16 @@ groupByLabel = go (TM.emptyTM :: TM.ListMap UniqDFM a)
             adjust (Just (_,vs)) = Just (k,v:vs)
 
 
-groupByInt :: (a -> Int) -> [a] -> [[a]]
-groupByInt f xs = nonDetEltsUFM $ List.foldl' go emptyUFM xs
+--groupByInt :: (NonLocal a, Outputable a) => (a -> Int) -> [a] -> [[a]]
+groupByInt :: (a -> Int) -> [a] -> [(Int, [a])]
+groupByInt f xs = map pair $ nonDetEltsUFM $ List.foldl' go emptyUFM xs
   -- See Note [Unique Determinism and code generation]
   where go m x = alterUFM (Just . maybe [x] (x:)) m (f x)
+        pair as@(a:_) = (f a, as)
+  {-
+        f' x | res == 170 && pprTrace "     ##### 170: " (ppr (successors x) $$ ppr x) True = res
+             | otherwise = res
+
+          where res = f x
+        
+-}

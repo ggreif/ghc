@@ -27,6 +27,7 @@ import HscTypes
 import Control.Monad
 import Outputable
 import Platform
+import Data.IORef ( readIORef, writeIORef )
 
 -----------------------------------------------------------------------------
 -- | Top level driver for C-- pipeline
@@ -50,7 +51,7 @@ cmmPipeline hsc_env topSRT prog =
 
 
 cpsTop :: HscEnv -> CmmDecl -> IO (CAFEnv, [CmmDecl])
-cpsTop _ p@(CmmData {}) = return (mapEmpty, [p])
+cpsTop _ p@CmmData{} = return (mapEmpty, [p])
 cpsTop hsc_env proc =
     do
        ----------- Control-flow optimisations ----------------------------------
@@ -67,9 +68,12 @@ cpsTop hsc_env proc =
                                           , do_layout = do_layout }} = h
 
        ----------- Eliminate common blocks -------------------------------------
-       g <- {-# SCC "elimCommonBlocks" #-}
-            condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) g
+       env <- readIORef globalEnv
+       (g, env') <- {-# SCC "elimCommonBlocks" #-}
+            condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) (g, env)
                           Opt_D_dump_cmm_cbe "Post common block elimination"
+
+       globalEnv `writeIORef` env'
 
        -- Any work storing block Labels must be performed _after_
        -- elimCommonBlocks
@@ -147,11 +151,17 @@ cpsTop hsc_env proc =
         dumps flag name
            = mapM_ (dumpWith dflags flag name . ppr)
 
+        condPass :: GeneralFlag
+                      -> (a -> a)
+                      -> a
+                      -> DumpFlag
+                      -> String
+                      -> IO a
         condPass flag pass g dumpflag dumpname =
             if gopt flag dflags
                then do
                     g <- return $ pass g
-                    dump dumpflag dumpname g
+                    --dump dumpflag dumpname g
                     return g
                else return g
 
