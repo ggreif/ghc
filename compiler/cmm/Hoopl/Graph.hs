@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -28,7 +29,7 @@ import Hoopl.Collections
 type Body n = LabelMap (Block n C C)
 
 -- | @Body@ abstracted over @block@
-type Body' block (n :: * -> * -> *) = LabelMap (block n C C)
+type Body' block (n :: OC -> OC -> *) = LabelMap (block n C C)
 
 -------------------------------
 -- | Gives access to the anchor points for
@@ -72,7 +73,7 @@ type Graph = Graph' Block
 -- | @Graph'@ is abstracted over the block type, so that we can build
 -- graphs of annotated blocks for example (Compiler.Hoopl.Dataflow
 -- needs this).
-data Graph' block (n :: * -> * -> *) e x where
+data Graph' :: ((OC -> OC -> *) -> OC -> OC -> *) -> (OC -> OC -> *) -> OC -> OC -> * where
   GNil  :: Graph' block n O O
   GUnit :: block n O O -> Graph' block n O O
   GMany :: MaybeO e (block n O C)

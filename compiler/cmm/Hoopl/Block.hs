@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -5,6 +6,7 @@
 module Hoopl.Block
     ( C
     , O
+    , OC
     , MaybeO(..)
     , IndexedCO
     , Block(..)
@@ -42,18 +44,23 @@ import GhcPrelude
 -- | Used at the type level to indicate an "open" structure with
 -- a unique, unnamed control-flow edge flowing in or out.
 -- "Fallthrough" and concatenation are permitted at an open point.
-data O
+--data O
 
 -- | Used at the type level to indicate a "closed" structure which
 -- supports control transfer only through the use of named
 -- labels---no "fallthrough" is permitted.  The number of control-flow
 -- edges is unconstrained.
-data C
+--data C
+
+data OC = O | C
+
+type O = 'O
+type C = 'C
 
 -- | Either type indexed by closed/open using type families
-type family IndexedCO ex a b :: *
-type instance IndexedCO C a _b = a
-type instance IndexedCO O _a b = b
+type family IndexedCO ex a b :: * where
+  IndexedCO C a _b = a
+  IndexedCO O _a b = b
 
 -- | Maybe type indexed by open/closed
 data MaybeO ex t where

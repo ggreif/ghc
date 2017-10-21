@@ -49,9 +49,9 @@ import Hoopl.Graph
 import Hoopl.Collections
 import Hoopl.Label
 
-type family   Fact x f :: *
-type instance Fact C f = FactBase f
-type instance Fact O f = f
+type family Fact x f :: * where
+  Fact C f = FactBase f
+  Fact O f = f
 
 newtype OldFact a = OldFact a
 
