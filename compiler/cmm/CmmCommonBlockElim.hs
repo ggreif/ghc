@@ -94,7 +94,6 @@ iterate dflags subst blocks
     merged_blocks :: HashedKeyedDistinctBlocks
     (new_substs, merged_blocks) =
         List.mapAccumL (\lmb (h,bs) -> let (lmb', bs') = List.mapAccumL go lmb bs in (lmb', (h,bs'))) mapEmpty grouped_blocks
-        --List.mapAccumL (\(h,bs)->(h,List.mapAccumL go bs)) mapEmpty grouped_blocks
       where
         go !new_subst1 (k,dbs) = (new_subst1 `mapUnion` new_subst2, (k,db))
           where
@@ -114,7 +113,7 @@ mergeBlocks dflags subst existing new = go new
           -- This block is a duplicate. Drop it, and add it to the substitution
           Just b' -> first (mapInsert (entryLabel b) (entryLabel b')) $ pprTrace "DID MERGE" (ppr (entryLabel b) $$ ppr (entryLabel b')) (go bs)
           -- This block is not a duplicate, keep it.
-          Nothing -> second (b:) $ pprTrace "DID NOT MERGE" (ppr (entryLabel b)) (go bs)
+          Nothing -> second (b:) $ go bs
 
 mergeBlockList :: DynFlags -> Subst -> [DistinctBlocks]
                -> (Subst, DistinctBlocks)
@@ -308,13 +307,12 @@ eqMiddleWith :: DynFlags
              -> (LocalRegMapping, Bool)
 eqMiddleWith dflags eqBid env a b =
   case (a, b) of
-    (l,  r) | pprTrace "eqMiddleWith " (vcat [ppr l, ppr r]) False -> undefined
      -- registers aren't compared since they are binding occurrences
     (CmmAssign (CmmLocal _) e1,  CmmAssign (CmmLocal _) e2) ->
         let eq = eqExprWith eqBid env e1 e2
         in (env', eq)
 
-    (l@(CmmAssign r1 e1),  r@(CmmAssign r2 e2)) | pprTrace "ASSIGN " (vcat [ppr l, ppr r]) True ->
+    (l@(CmmAssign r1 e1),  r@(CmmAssign r2 e2)) ->
         let eq = r1 == r2
               && eqExprWith eqBid env e1 e2
         in (env', eq)
@@ -393,7 +391,6 @@ eqLastWith :: (BlockId -> BlockId -> Bool) -> LocalRegMapping
            -> CmmNode O C -> CmmNode O C -> Bool
 eqLastWith eqBid env a b =
     case (a, b) of
-      -- (l,  r) | pprTrace "eqLastWith " (vcat [ppr l, ppr r]) False -> undefined
       (CmmBranch bid1, CmmBranch bid2) -> eqBid bid1 bid2
       (CmmCondBranch c1 t1 f1 l1, CmmCondBranch c2 t2 f2 l2) ->
           eqExprWith eqBid env c1 c2 && l1 == l2 && eqBid t1 t2 && eqBid f1 f2
