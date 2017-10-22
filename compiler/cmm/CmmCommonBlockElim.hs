@@ -452,6 +452,8 @@ groupByLabel = go (TM.emptyTM :: TM.ListMap UniqDFM a)
             adjust (Just (_,vs)) = Just (k,v:vs)
 
 
+
+-- FIXME: hash function now called twice! 
 --groupByInt :: (NonLocal a, Outputable a) => (a -> Int) -> [a] -> [[a]]
 groupByInt :: (a -> Int) -> [a] -> [(Int, [a])]
 groupByInt f xs = map pair $ nonDetEltsUFM $ List.foldl' go emptyUFM xs
