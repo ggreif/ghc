@@ -30,6 +30,7 @@ import Platform
 import Data.IORef ( readIORef, writeIORef )
 import Hoopl.Graph ( entryLabel, Graph'(GMany) )
 import Hoopl.Block ( MaybeO(NothingO), firstNode )
+import MkGraph ( labelAGraph, mkBranch )
 
 -----------------------------------------------------------------------------
 -- | Top level driver for C-- pipeline
@@ -80,11 +81,14 @@ cpsTop hsc_env proc =
             condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) (g, env)
                           Opt_D_dump_cmm_cbe "Post common block elimination"
 
+       let shortcut = entry `mapLookup` fst env'
        pprTrace "NEW ENV "   (ppr $ fst env')
-        (pprTrace "ACTUALLY REPLACED "   ((ppr $ entry `mapLookup` fst env') $$ ppr cme)
+        (pprTrace "ACTUALLY REPLACED "   ((ppr shortcut) $$ ppr cme)
          (globalEnv `writeIORef` env'))
 
-       --labelAGraph (g_entry g) (mkBranch dest, scp)
+       g <- pure $ case shortcut of
+              Nothing -> g
+              Just dest -> labelAGraph entry (mkBranch dest, scp)
 
        -- Any work storing block Labels must be performed _after_
        -- elimCommonBlocks
