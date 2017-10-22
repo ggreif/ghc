@@ -19,6 +19,7 @@ import BlockId
 import Cmm
 import CmmUtils
 import CmmSwitch (mapSwitchTargets)
+import MkGraph (mkBranch, labelAGraph)
 import Maybes
 import Panic
 import Util
@@ -362,6 +363,14 @@ callContinuation_maybe _ = Nothing
 replaceLabels :: LabelMap BlockId -> CmmGraph -> CmmGraph
 replaceLabels env g
   | mapNull env = g
+  -- | Just dest <- mapLookup (g_entry g) env = g { g_graph = CmmBranch dest }
+  -- | Just dest <- mapLookup (g_entry g) env = g { g_graph = GMany NothingO emptyBody (JustO $ CmmBranch dest) }
+  -- | Just dest <- mapLookup (g_entry g) env = g { g_graph = GMany NothingO (addBlock (_ $ CmmBranch dest) emptyBody) NothingO }
+  -- | Just dest <- mapLookup (g_entry g) env = g { g_graph = GMany NothingO (addBlock (BlockCC (CmmEntry dest _) BNil (CmmBranch dest)) emptyBody) NothingO }
+
+  | Just dest <- mapLookup (g_entry g) env = labelAGraph (g_entry g) (mkBranch dest, undefined)
+
+  --BlockCC (CmmEntry new_lbl tickscp) BNil (CmmBranch new_lbl)
   | otherwise   = replace_eid $ mapGraphNodes1 txnode g
    where
      replace_eid g = g {g_entry = lookup (g_entry g)}
@@ -380,9 +389,9 @@ replaceLabels env g
      txnode other = mapExpDeep exp other
 
      exp :: CmmExpr -> CmmExpr
-     exp (CmmLit (CmmBlock bid))                = CmmLit (CmmBlock (lookup bid))
+     exp (CmmLit (CmmBlock bid))     = CmmLit (CmmBlock (lookup bid))
      exp (CmmStackSlot (Young id) i) = CmmStackSlot (Young (lookup id)) i
-     exp e                                      = e
+     exp e                           = e
 
 mkCmmCondBranch :: CmmExpr -> Label -> Label -> Maybe Bool -> CmmNode O C
 mkCmmCondBranch p t f l =
