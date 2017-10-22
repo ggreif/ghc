@@ -29,7 +29,7 @@ import Outputable
 import Platform
 import Data.IORef ( readIORef, writeIORef )
 import Hoopl.Graph ( entryLabel, Graph'(GMany) )
-import Hoopl.Block ( MaybeO(NothingO) )
+import Hoopl.Block ( MaybeO(NothingO), firstNode )
 
 -----------------------------------------------------------------------------
 -- | Top level driver for C-- pipeline
@@ -72,6 +72,8 @@ cpsTop hsc_env proc =
        ----------- Eliminate common blocks -------------------------------------
        let CmmGraph{g_entry = entry, g_graph = graph@(GMany NothingO body NothingO) } = g
            --label = entryLabel body
+           Just entryBlock = entry `mapLookup` body
+           cme@(CmmEntry _ scp) = firstNode entryBlock
        
        env <- readIORef globalEnv
        (g, env') <- {-# SCC "elimCommonBlocks" #-}
@@ -79,8 +81,10 @@ cpsTop hsc_env proc =
                           Opt_D_dump_cmm_cbe "Post common block elimination"
 
        pprTrace "NEW ENV "   (ppr $ fst env')
-        (pprTrace "ACTUALLY REPLACED "   (ppr $ entry `mapLookup` fst env')
-         (globalEnv `writeIORef` env')) 
+        (pprTrace "ACTUALLY REPLACED "   ((ppr $ entry `mapLookup` fst env') $$ ppr cme)
+         (globalEnv `writeIORef` env'))
+
+       --labelAGraph (g_entry g) (mkBranch dest, scp)
 
        -- Any work storing block Labels must be performed _after_
        -- elimCommonBlocks
