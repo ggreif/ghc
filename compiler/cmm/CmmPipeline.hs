@@ -73,7 +73,8 @@ cpsTop hsc_env proc =
             condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) (g, env)
                           Opt_D_dump_cmm_cbe "Post common block elimination"
 
-       globalEnv `writeIORef` env'
+       pprTrace "NEW ENV "   (ppr $ fst env')
+        (globalEnv `writeIORef` env')
 
        -- Any work storing block Labels must be performed _after_
        -- elimCommonBlocks
@@ -140,7 +141,7 @@ cpsTop hsc_env proc =
                      else g
        g <- return (map removeUnreachableBlocksProc g)
             -- See Note [unreachable blocks]
-       dumps Opt_D_dump_cmm_cfg "Post control-flow optimisations" g
+       dumps Opt_D_dump_cmm_cfg "Post control-flow optimisations (final)" g
 
        return (cafEnv, g)
 

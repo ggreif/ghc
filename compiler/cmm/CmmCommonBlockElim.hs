@@ -71,9 +71,11 @@ elimCommonBlocks :: DynFlags -> (CmmGraph, (Subst, HashedKeyedDistinctBlocks)) -
 elimCommonBlocks dflags (g, (env0, blcks)) = (replaceLabels env $ copyTicks env g, (env, blcks'))
   where
      (env, blcks') = iterate dflags env0 acc_bwk -- blocks_with_key
-     groups = groupByInt (hash_block dflags) (postorderDfs g)
+     (r:rest) = postorderDfs g
+     groups = groupByInt (hash_block dflags) rest
      blocks_with_key = [ (h, [ (successors b, [b]) | b <- bs]) | (h, bs) <- groups]
-     acc_bwk = M.toList $ M.unionWith (++) (M.fromList blcks) (M.fromList blocks_with_key)
+     boss = M.fromList [ (hash_block dflags r, [ (successors r, [r])]) ]
+     acc_bwk = M.toList $ M.unionWith (++) boss (M.unionWith (++) (M.fromList blcks) (M.fromList blocks_with_key))
 
 -- Invariant: The blocks in the list are pairwise distinct
 -- (so avoid comparing them again)

@@ -368,7 +368,7 @@ replaceLabels env g
   -- | Just dest <- mapLookup (g_entry g) env = g { g_graph = GMany NothingO (addBlock (_ $ CmmBranch dest) emptyBody) NothingO }
   -- | Just dest <- mapLookup (g_entry g) env = g { g_graph = GMany NothingO (addBlock (BlockCC (CmmEntry dest _) BNil (CmmBranch dest)) emptyBody) NothingO }
 
-  | Just dest <- mapLookup (g_entry g) env = labelAGraph (g_entry g) (mkBranch dest, undefined)
+  -- ##### | Just dest <- mapLookup (g_entry g) env = labelAGraph (g_entry g) (mkBranch dest, undefined)
 
   --BlockCC (CmmEntry new_lbl tickscp) BNil (CmmBranch new_lbl)
   | otherwise   = replace_eid $ mapGraphNodes1 txnode g
