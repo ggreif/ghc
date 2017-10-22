@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, GADTs #-}
 
 module CmmPipeline (
   -- | Converts C-- with an implicit stack and native C-- calls into
@@ -28,6 +28,8 @@ import Control.Monad
 import Outputable
 import Platform
 import Data.IORef ( readIORef, writeIORef )
+import Hoopl.Graph ( entryLabel, Graph'(GMany) )
+import Hoopl.Block ( MaybeO(NothingO) )
 
 -----------------------------------------------------------------------------
 -- | Top level driver for C-- pipeline
@@ -68,13 +70,17 @@ cpsTop hsc_env proc =
                                           , do_layout = do_layout }} = h
 
        ----------- Eliminate common blocks -------------------------------------
+       let CmmGraph{g_entry = entry, g_graph = graph@(GMany NothingO body NothingO) } = g
+           --label = entryLabel body
+       
        env <- readIORef globalEnv
        (g, env') <- {-# SCC "elimCommonBlocks" #-}
             condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) (g, env)
                           Opt_D_dump_cmm_cbe "Post common block elimination"
 
        pprTrace "NEW ENV "   (ppr $ fst env')
-        (globalEnv `writeIORef` env')
+        (pprTrace "ACTUALLY REPLACED "   (ppr $ entry `mapLookup` fst env')
+         (globalEnv `writeIORef` env')) 
 
        -- Any work storing block Labels must be performed _after_
        -- elimCommonBlocks
