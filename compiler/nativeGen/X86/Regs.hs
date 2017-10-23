@@ -150,6 +150,7 @@ litToImm (CmmLabelDiffOff l1 l2 off)
                              = ImmConstantSum
                                (ImmConstantDiff (ImmCLbl l1) (ImmCLbl l2))
                                (ImmInt off)
+litToImm (CmmCrossProc id) = ImmLit $ char 'L' <> ppr id
 litToImm _                   = panic "X86.Regs.litToImm: no match"
 
 -- addressing modes ------------------------------------------------------------

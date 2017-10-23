@@ -191,6 +191,7 @@ data CmmLit
   | CmmBlock {-# UNPACK #-} !BlockId     -- Code label
         -- Invariant: must be a continuation BlockId
         -- See Note [Continuation BlockId] in CmmNode.
+  | CmmCrossProc {-# UNPACK #-} !BlockId     -- Plain label in other procedure
 
   | CmmHighStackMark -- A late-bound constant that stands for the max
                      -- #bytes of stack space used during a procedure.
@@ -221,6 +222,7 @@ cmmLitType dflags (CmmLabel lbl)       = cmmLabelType dflags lbl
 cmmLitType dflags (CmmLabelOff lbl _)  = cmmLabelType dflags lbl
 cmmLitType dflags (CmmLabelDiffOff {}) = bWord dflags
 cmmLitType dflags (CmmBlock _)         = bWord dflags
+cmmLitType dflags (CmmCrossProc _)     = bWord dflags
 cmmLitType dflags (CmmHighStackMark)   = bWord dflags
 
 cmmLabelType :: DynFlags -> CLabel -> CmmType

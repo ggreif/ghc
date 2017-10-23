@@ -88,7 +88,7 @@ cpsTop hsc_env proc =
 
        g <- pure $ case shortcut of
               Nothing -> g
-              Just dest -> labelAGraph entry (mkJump dflags NativeNodeCall (CmmLit (CmmBlock dest)) [] 8, scp)
+              Just dest -> labelAGraph entry (mkJump dflags NativeNodeCall (CmmLit (CmmCrossProc dest)) [] 8, scp)
               --Just dest -> labelAGraph entry (mkBranch dest, scp)
 
        -- Any work storing block Labels must be performed _after_

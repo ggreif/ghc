@@ -201,6 +201,7 @@ pprLit lit = sdocWithDynFlags $ \dflags ->
     CmmLabelDiffOff clbl1 clbl2 i -> ppr clbl1 <> char '-'
                                   <> ppr clbl2 <> ppr_offset i
     CmmBlock id        -> ppr id
+    CmmCrossProc id    -> ppr id
     CmmHighStackMark -> text "<highSp>"
 
 pprLit1 :: CmmLit -> SDoc
