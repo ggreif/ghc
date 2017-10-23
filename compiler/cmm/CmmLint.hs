@@ -59,21 +59,22 @@ lintCmmDecl _ (CmmData {})
 
 lintCmmGraph :: DynFlags -> CmmGraph -> CmmLint ()
 lintCmmGraph dflags g =
-    cmmLocalLiveness dflags g `seq` mapM_ (lintCmmBlock labels) blocks
+    cmmLocalLiveness dflags g `seq` mapM_ (lintCmmBlock checkBranches labels) blocks
     -- cmmLiveness throws an error if there are registers
     -- live on entry to the graph (i.e. undefined
     -- variables)
   where
        blocks = toBlockList g
        labels = setFromList (map entryLabel blocks)
+       checkBranches = not $ gopt Opt_CmmElimCommonBlocks dflags
 
 
-lintCmmBlock :: LabelSet -> CmmBlock -> CmmLint ()
-lintCmmBlock labels block
+lintCmmBlock :: Bool -> LabelSet -> CmmBlock -> CmmLint ()
+lintCmmBlock checkBranches labels block
   = addLintInfo (text "in basic block " <> ppr (entryLabel block)) $ do
         let (_, middle, last) = blockSplit block
         mapM_ lintCmmMiddle (blockToList middle)
-        lintCmmLast labels last
+        lintCmmLast checkBranches labels last
 
 -- -----------------------------------------------------------------------------
 -- lintCmmExpr
@@ -161,9 +162,10 @@ lintCmmMiddle node = case node of
             mapM_ lintCmmExpr actuals
 
 
-lintCmmLast :: LabelSet -> CmmNode O C -> CmmLint ()
-lintCmmLast labels node = case node of
-  CmmBranch id -> checkTarget id
+lintCmmLast :: Bool -> LabelSet -> CmmNode O C -> CmmLint ()
+lintCmmLast checkBranches labels node = case node of
+  CmmBranch id | checkBranches -> checkTarget id
+  CmmBranch _ -> return ()
 
   CmmCondBranch e t f _ -> do
             dflags <- getDynFlags
