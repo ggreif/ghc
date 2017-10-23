@@ -30,7 +30,7 @@ import Platform
 import Data.IORef ( readIORef, writeIORef )
 import Hoopl.Graph ( entryLabel, Graph'(GMany) )
 import Hoopl.Block ( MaybeO(NothingO), firstNode )
-import MkGraph ( labelAGraph, mkBranch )
+import MkGraph ( labelAGraph, mkJump, mkBranch )
 
 -----------------------------------------------------------------------------
 -- | Top level driver for C-- pipeline
@@ -88,7 +88,8 @@ cpsTop hsc_env proc =
 
        g <- pure $ case shortcut of
               Nothing -> g
-              Just dest -> labelAGraph entry (mkBranch dest, scp)
+              Just dest -> labelAGraph entry (mkJump dflags NativeNodeCall (CmmLit (CmmBlock dest)) [] 8, scp)
+              --Just dest -> labelAGraph entry (mkBranch dest, scp)
 
        -- Any work storing block Labels must be performed _after_
        -- elimCommonBlocks
