@@ -176,9 +176,10 @@ cpsTop hsc_env proc =
                           Opt_D_dump_cmm_cbe "Post global common block elimination"
 
        let shortcut = entry `mapLookup` fst env'
-       pprTrace "NEW ENV "   (ppr $ fst env')
-        (pprTrace "ACTUALLY REPLACED "   ((ppr shortcut) $$ ppr cme)
-         (globalEnv `writeIORef` env'))
+       pprTrace "NEW ENV: "   (text . show . length . fst $ env') -- (ppr $ fst env')
+       -- (pprTrace "ACTUALLY REPLACED "   ((ppr shortcut) $$ ppr cme)
+         (globalEnv `writeIORef` env')
+       -- )
 
        g''' <- pure $ case shortcut of
                  Nothing -> g''
