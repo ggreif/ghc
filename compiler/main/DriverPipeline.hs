@@ -45,6 +45,7 @@ import SysTools.ExtraObj
 import HscMain
 import Finder
 import HscTypes hiding ( Hsc )
+import CmmCommonBlockElim ( cleanGlobalBlockEnv )
 import Outputable
 import Module
 import ErrUtils
@@ -644,6 +645,8 @@ runPipeline'
 runPipeline' start_phase hsc_env env input_fn
              maybe_loc foreign_os
   = do
+  cleanGlobalBlockEnv
+
   -- Execute the pipeline...
   let state = PipeState{ hsc_env, maybe_loc, foreign_os = foreign_os }
 
@@ -794,7 +797,7 @@ getOutputFilename stop_phase output basename dflags next_phase maybe_location
 
 
 -- | The fast LLVM Pipeline skips the mangler and assembler,
--- emiting object code dirctly from llc.
+-- emitting object code directly from llc.
 --
 -- slow: opt -> llc -> .s -> mangler -> as -> .o
 -- fast: opt -> llc -> .o
