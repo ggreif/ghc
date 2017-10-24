@@ -32,8 +32,8 @@ import Unique
 import Control.Arrow (first, second)
 import Data.IORef
 import System.IO.Unsafe (unsafePerformIO)
---import Data.Map.Lazy as Map
 
+-- FIXME: this is dangerous, but works.
 globalEnv :: IORef (Subst, HashedKeyedDistinctBlocks)
 (globalEnv, ()) = unsafePerformIO $ do ref <- newIORef (mapEmpty, [])
                                        return (ref, ())
