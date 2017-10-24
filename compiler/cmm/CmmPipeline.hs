@@ -164,7 +164,7 @@ cpsTop hsc_env proc =
 
        ----------- Eliminate common blocks (global) -------------------------------------
              --GenCmmDecl CmmStatics CmmTopInfo CmmGraph
-       let [CmmProc _ _ _ g'] = g
+       let [CmmProc h l r g'] = g
 
        let CmmGraph{g_entry = entry, g_graph = graph@(GMany NothingO body NothingO) } = g'
            Just entryBlock = entry `mapLookup` body
@@ -184,7 +184,9 @@ cpsTop hsc_env proc =
                  Nothing -> g''
                  Just dest -> labelAGraph entry (mkJump dflags NativeNodeCall (CmmLit (CmmCrossProc dest)) [] 8, scp)
 
-       return (cafEnv, g)
+       let newProc = [CmmProc h l r g''']
+
+       return (cafEnv, newProc)
 
   where dflags = hsc_dflags hsc_env
         platform = targetPlatform dflags
