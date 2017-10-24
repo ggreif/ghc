@@ -113,7 +113,7 @@ mergeBlocks dflags subst existing new = go new
     go (b:bs) =
         case List.find (eqBlockBodyWith dflags (eqBid subst) b) existing of
           -- This block is a duplicate. Drop it, and add it to the substitution
-          Just b' -> first (mapInsert (entryLabel b) (entryLabel b')) $ pprTrace "DID MERGE" (ppr (entryLabel b) $$ ppr (entryLabel b')) (go bs)
+          Just b' -> first (mapInsert (entryLabel b) (entryLabel b')) (go bs)
           -- This block is not a duplicate, keep it.
           Nothing -> second (b:) $ go bs
 
@@ -194,7 +194,7 @@ data HashEnv = HashEnv { localRegHashEnv :: !(LocalRegEnv DeBruijn)
 
 hash_block :: DynFlags -> CmmBlock -> HashCode
 hash_block dflags block =
-  pprTrace "hash_block" (ppr (entryLabel block) $$ ppr hash) -- GGR
+  -- pprTrace "hash_block" (ppr (entryLabel block) $$ ppr hash) -- GGR
   hash
   where hash_fst _ (env, h) = (env, h)
         hash_mid m (env, h) = let (env', h') = hash_node env m
@@ -373,10 +373,10 @@ eqBlockBodyWith :: DynFlags
                 -> CmmBlock -> CmmBlock -> Bool
 eqBlockBodyWith dflags eqBid block block'
 
-  | equal     = pprTrace "equal" (vcat [ppr block, ppr block']) True
-  | otherwise = pprTrace "not equal" (vcat [ppr block, ppr block']) False
+  -- | equal     = pprTrace "equal" (vcat [ppr block, ppr block']) True
+  -- | otherwise = pprTrace "not equal" (vcat [ppr block, ppr block']) False
 
- -- = equal
+  = equal
   where (_,m,l)   = blockSplit block
         nodes     = filter (not . dont_care) (blockToList m)
         (_,m',l') = blockSplit block'
