@@ -71,16 +71,16 @@ cpsTop hsc_env proc =
                                           , do_layout = do_layout }} = h
 
        ----------- Eliminate common blocks -------------------------------------
+{-
        let CmmGraph{g_entry = entry, g_graph = graph@(GMany NothingO body NothingO) } = g
-           --label = entryLabel body
            Just entryBlock = entry `mapLookup` body
            cme@(CmmEntry _ scp) = firstNode entryBlock
-       
-       env <- readIORef globalEnv
-       (g, env') <- {-# SCC "elimCommonBlocks" #-}
-            condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) (g, env)
+       -}
+       --env <- readIORef globalEnv
+       (g, _) <- {-# SCC "elimCommonBlocks" #-}
+            condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) (g, (mapEmpty, []))
                           Opt_D_dump_cmm_cbe "Post common block elimination"
-
+{-
        let shortcut = entry `mapLookup` fst env'
        pprTrace "NEW ENV "   (ppr $ fst env')
         (pprTrace "ACTUALLY REPLACED "   ((ppr shortcut) $$ ppr cme)
@@ -89,7 +89,7 @@ cpsTop hsc_env proc =
        g <- pure $ case shortcut of
               Nothing -> g
               Just dest -> labelAGraph entry (mkJump dflags NativeNodeCall (CmmLit (CmmCrossProc dest)) [] 8, scp)
-              --Just dest -> labelAGraph entry (mkBranch dest, scp)
+-}
 
        -- Any work storing block Labels must be performed _after_
        -- elimCommonBlocks
@@ -157,6 +157,32 @@ cpsTop hsc_env proc =
        g <- return (map removeUnreachableBlocksProc g)
             -- See Note [unreachable blocks]
        dumps Opt_D_dump_cmm_cfg "Post control-flow optimisations (final)" g
+
+
+
+
+
+       ----------- Eliminate common blocks (global) -------------------------------------
+             --GenCmmDecl CmmStatics CmmTopInfo CmmGraph
+       let [CmmProc _ _ _ g'] = g
+
+       let CmmGraph{g_entry = entry, g_graph = graph@(GMany NothingO body NothingO) } = g'
+           Just entryBlock = entry `mapLookup` body
+           cme@(CmmEntry _ scp) = firstNode entryBlock
+       
+       env <- readIORef globalEnv
+       (g'', env') <- {-# SCC "elimCommonBlocksGlobally" #-}
+            condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) (g', env)
+                          Opt_D_dump_cmm_cbe "Post global common block elimination"
+
+       let shortcut = entry `mapLookup` fst env'
+       pprTrace "NEW ENV "   (ppr $ fst env')
+        (pprTrace "ACTUALLY REPLACED "   ((ppr shortcut) $$ ppr cme)
+         (globalEnv `writeIORef` env'))
+
+       g''' <- pure $ case shortcut of
+                 Nothing -> g''
+                 Just dest -> labelAGraph entry (mkJump dflags NativeNodeCall (CmmLit (CmmCrossProc dest)) [] 8, scp)
 
        return (cafEnv, g)
 
