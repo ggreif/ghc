@@ -10,7 +10,7 @@
 -- | Types for the per-module compiler
 module HscTypes (
         -- * compilation state
-        HscEnv(..), hscEPS,
+        HscEnv(..), hsc_cmmCommonBlocks, hscEPS,
         FinderCache, FindResult(..), InstalledFindResult(..),
         Target(..), TargetId(..), pprTarget, pprTargetId,
         HscStatus(..),
@@ -435,12 +435,17 @@ data HscEnv
                 -- the 'IfGblEnv'. See 'TcRnTypes.tcg_type_env_var' for
                 -- 'TcRnTypes.TcGblEnv'.  See also Note [hsc_type_env_var hack]
 
-        hsc_cmmCommonBlocks :: {-# UNPACK #-} !(IORef CmmBlockElimEnv)
+        hsc_cmmCommonBlocksStat, hsc_cmmCommonBlocksDyn  :: {-# UNPACK #-} !(IORef CmmBlockElimEnv)
 
         , hsc_iserv :: MVar (Maybe IServ)
                 -- ^ interactive server process.  Created the first
                 -- time it is needed.
  }
+
+hsc_cmmCommonBlocks :: HscEnv -> IORef CmmBlockElimEnv
+hsc_cmmCommonBlocks hsc | WayDyn `elem` ways (hsc_dflags hsc) = hsc_cmmCommonBlocksDyn hsc
+hsc_cmmCommonBlocks hsc = hsc_cmmCommonBlocksStat hsc
+
 
 -- Note [hsc_type_env_var hack]
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
