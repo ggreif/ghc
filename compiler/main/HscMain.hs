@@ -133,6 +133,7 @@ import SimplStg         ( stg2stg )
 import Cmm
 import CmmParse         ( parseCmmFile )
 import CmmBuildInfoTables
+import CmmCommonBlockElim ( emptyGlobalBlockEnv )
 import CmmPipeline
 import CmmInfo
 import CodeOutput
@@ -185,6 +186,7 @@ newHscEnv dflags = do
     us      <- mkSplitUniqSupply 'r'
     nc_var  <- newIORef (initNameCache us knownKeyNames)
     fc_var  <- newIORef emptyInstalledModuleEnv
+    cmm_var  <- newIORef emptyGlobalBlockEnv
     iserv_mvar <- newMVar Nothing
     return HscEnv {  hsc_dflags       = dflags
                   ,  hsc_targets      = []
@@ -195,6 +197,7 @@ newHscEnv dflags = do
                   ,  hsc_NC           = nc_var
                   ,  hsc_FC           = fc_var
                   ,  hsc_type_env_var = Nothing
+                  ,  hsc_cmmCommonBlocks = cmm_var
                   , hsc_iserv        = iserv_mvar
                   }
 

@@ -71,25 +71,10 @@ cpsTop hsc_env proc =
                                           , do_layout = do_layout }} = h
 
        ----------- Eliminate common blocks -------------------------------------
-{-
-       let CmmGraph{g_entry = entry, g_graph = graph@(GMany NothingO body NothingO) } = g
-           Just entryBlock = entry `mapLookup` body
-           cme@(CmmEntry _ scp) = firstNode entryBlock
-       -}
-       --env <- readIORef globalEnv
+
        (g, _) <- {-# SCC "elimCommonBlocks" #-}
             condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) (g, (mapEmpty, []))
                           Opt_D_dump_cmm_cbe "Post common block elimination"
-{-
-       let shortcut = entry `mapLookup` fst env'
-       pprTrace "NEW ENV "   (ppr $ fst env')
-        (pprTrace "ACTUALLY REPLACED "   ((ppr shortcut) $$ ppr cme)
-         (globalEnv `writeIORef` env'))
-
-       g <- pure $ case shortcut of
-              Nothing -> g
-              Just dest -> labelAGraph entry (mkJump dflags NativeNodeCall (CmmLit (CmmCrossProc dest)) [] 8, scp)
--}
 
        -- Any work storing block Labels must be performed _after_
        -- elimCommonBlocks
@@ -170,7 +155,7 @@ cpsTop hsc_env proc =
            Just entryBlock = entry `mapLookup` body
            cme@(CmmEntry _ scp) = firstNode entryBlock
        
-       env <- readIORef globalEnv
+       env <- readIORef (hsc_cmmCommonBlocks hsc_env)
        (g'', env') <- {-# SCC "elimCommonBlocksGlobally" #-}
             condPass Opt_CmmElimCommonBlocks (elimCommonBlocks dflags) (g', env)
                           Opt_D_dump_cmm_cbe "Post global common block elimination"
@@ -178,7 +163,7 @@ cpsTop hsc_env proc =
        let shortcut = entry `mapLookup` fst env'
        pprTrace "NEW ENV: "   (text . show . length . fst $ env') -- (ppr $ fst env')
        -- (pprTrace "ACTUALLY REPLACED "   ((ppr shortcut) $$ ppr cme)
-         (globalEnv `writeIORef` env')
+         (hsc_cmmCommonBlocks hsc_env `writeIORef` env')
        -- )
 
        g''' <- pure $ case shortcut of

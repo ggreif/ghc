@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, BangPatterns #-}
 module CmmCommonBlockElim
-  ( elimCommonBlocks, globalEnv
+  ( CmmBlockElimEnv, elimCommonBlocks, emptyGlobalBlockEnv -- globalEnv, cleanGlobalBlockEnv
   )
 where
 
@@ -33,10 +33,15 @@ import Control.Arrow (first, second)
 import Data.IORef
 import System.IO.Unsafe (unsafePerformIO)
 
+emptyGlobalBlockEnv :: CmmBlockElimEnv
+emptyGlobalBlockEnv = (mapEmpty, [])
+
 -- FIXME: this is dangerous, but works.
-globalEnv :: IORef (Subst, HashedKeyedDistinctBlocks)
-(globalEnv, ()) = unsafePerformIO $ do ref <- newIORef (mapEmpty, [])
-                                       return (ref, ())
+--globalEnv :: IORef (Subst, HashedKeyedDistinctBlocks)
+--(globalEnv, ()) = unsafePerformIO $ do ref <- newIORef emptyGlobalBlockEnv
+--                                       return (ref, ())
+
+-- cleanGlobalBlockEnv = globalEnv `writeIORef` emptyGlobalBlockEnv
 
 -- -----------------------------------------------------------------------------
 -- Eliminate common blocks
@@ -83,6 +88,7 @@ type DistinctBlocks = [CmmBlock]
 type Key = [Label]
 type Subst = LabelMap BlockId
 type HashedKeyedDistinctBlocks = [(Int, [(Key, DistinctBlocks)])]
+type CmmBlockElimEnv = (Subst, HashedKeyedDistinctBlocks)
 
 -- The outer list groups by hash. We retain this grouping throughout.
 iterate :: DynFlags -> Subst -> HashedKeyedDistinctBlocks -> (Subst, HashedKeyedDistinctBlocks)

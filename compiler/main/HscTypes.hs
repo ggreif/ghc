@@ -207,6 +207,7 @@ import Util
 import UniqDSet
 import GHC.Serialized   ( Serialized )
 import qualified GHC.LanguageExtensions as LangExt
+import CmmCommonBlockElim ( CmmBlockElimEnv )
 
 import Foreign
 import Control.Monad    ( guard, liftM, ap )
@@ -429,10 +430,12 @@ data HscEnv
         hsc_FC   :: {-# UNPACK #-} !(IORef FinderCache),
                 -- ^ The cached result of performing finding in the file system
 
-        hsc_type_env_var :: Maybe (Module, IORef TypeEnv)
+        hsc_type_env_var :: Maybe (Module, IORef TypeEnv),
                 -- ^ Used for one-shot compilation only, to initialise
                 -- the 'IfGblEnv'. See 'TcRnTypes.tcg_type_env_var' for
                 -- 'TcRnTypes.TcGblEnv'.  See also Note [hsc_type_env_var hack]
+
+        hsc_cmmCommonBlocks :: {-# UNPACK #-} !(IORef CmmBlockElimEnv)
 
         , hsc_iserv :: MVar (Maybe IServ)
                 -- ^ interactive server process.  Created the first
