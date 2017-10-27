@@ -166,7 +166,7 @@ cpsTop hsc_env proc =
                  Nothing -> g''
                  Just dest -> labelAGraph entry (mkJump dflags NativeNodeCall (CmmLit (CmmCrossProc dest)) [] 8, scp)
 
-       let newProc = [CmmProc h l r g''']
+       let newProc = [attachContInfoTables (callProcPoints g''') $ CmmProc h l r g''']
 
        return (cafEnv, newProc)
 
