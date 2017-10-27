@@ -242,7 +242,7 @@ data PartialResult = PartialResult {
                         presultProvenance :: Provenance
                          -- keep track of provenance because we don't want
                          -- to warn about redundant matches if the result
-                         -- is contaiminated with a COMPLETE pragma
+                         -- is contaminated with a COMPLETE pragma
                       , presultCovered :: Covered
                       , presultUncovered :: Uncovered
                       , presultDivergent :: Diverged }
