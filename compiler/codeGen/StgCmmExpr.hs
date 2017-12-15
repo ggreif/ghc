@@ -307,7 +307,7 @@ cgCase (StgOpApp (StgPrimOp op) args _) bndr (AlgAlt tycon) alts
        ; (mb_deflt, branches) <- cgAlgAltRhss (NoGcInAlts,AssignedDirectly)
                                               (NonVoid bndr) alts
                                  -- See Note [GC for conditionals]
-       ; emitSwitch tag_expr branches mb_deflt 0 (tyConFamilySize tycon - 1)
+       ; emitSwitch tag_expr branches mb_deflt 0 (tyConFamilySize tycon - 1) (return ())
        ; return AssignedDirectly
        }
   where
@@ -620,7 +620,7 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
         ; if small || null info
            then -- Yes, bndr_reg has constr. tag in ls bits
                emitSwitch tag_expr branches' mb_deflt 1
-                 $ if small then fam_sz else maxpt
+                 (if small then fam_sz else maxpt) (return ())
 
            else -- No, get exact tag from info table when mAX_PTR_TAG
               do
@@ -636,14 +636,14 @@ cgAlts gc_plan bndr (AlgAlt tycon) alts
                     prelabel _ = return (Nothing, Nothing)
 
                 (mb_deflt, mb_branch) <- prelabel mb_deflt
-                emitSwitch tag_expr (catchall : ptr) mb_deflt 1 maxpt
+                emitSwitch tag_expr (catchall : ptr) mb_deflt 1 maxpt (return ())
                 join_lbl <- newBlockId
                 emit (mkBranch join_lbl)
                 emitLabel infos_lbl
                 let untagged_ptr = cmmUntag dflags (CmmReg bndr_reg)
                     tag_expr = getConstrTag dflags untagged_ptr
                     info0 = first pred <$> info
-                emitSwitch tag_expr info0 mb_branch (maxpt - 1) (fam_sz - 1)
+                emitSwitch tag_expr info0 mb_branch (maxpt - 1) (fam_sz - 1) (return ())
                 emitLabel join_lbl
 
         ; return AssignedDirectly }
